@@ -1,119 +1,70 @@
 /**
  * useUsers Hook
- * Custom hook for managing user data with pagination, caching, and refresh functionality
+ * Custom hook for managing user data with pagination using React Query
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { User } from '../types/User';
 import { fetchUsers as fetchUsersApi } from '../api/userApi';
-import { getCache, setCache } from '../utils/cache';
-import { API_CONFIG } from '../utils/constants';
+import { API_CONFIG, MESSAGES } from '../utils/constants';
 
 export const useUsers = () => {
-  // State management
-  const [users, setUsers] = useState<User[]>([]);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [hasMore, setHasMore] = useState(true);
 
-  /**
-   * Fetches users from API or cache
-   * Implements pagination and duplicate prevention
-   */
-  const fetchUsers = useCallback(async () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    setError('');
-    try {
-      const cacheKey = `users_page_${page}`;
-      const cached = getCache(cacheKey);
-      
-      // Return cached data if available
-      if (cached) {
-        setUsers(prev => {
-          const existing = new Set(prev.map(u => u.id));
-          const newUsers = cached.filter((u: User) => !existing.has(u.id));
-          return [...prev, ...newUsers];
-        });
-        if (cached.length < API_CONFIG.USERS_PER_PAGE) setHasMore(false);
-        setLoading(false);
-        setInitialLoading(false);
-        return;
-      }
-      
-      // Fetch from API
-      const data = await fetchUsersApi(page);
+  // Fetch users for current page using React Query
+  const { data, isLoading, isRefetching, error, refetch } = useQuery({
+    queryKey: ['users', page],
+    queryFn: () => fetchUsersApi(page),
+    enabled: hasMore,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Update allUsers when new data arrives
+  useEffect(() => {
+    if (data && data.length > 0) {
+      setAllUsers(prev => {
+        const existing = new Set(prev.map(u => u.id));
+        const newUsers = data.filter(u => !existing.has(u.id));
+        return [...prev, ...newUsers];
+      });
       
       // Check if we've reached the end
-      if (data.length === 0 || data.length < API_CONFIG.USERS_PER_PAGE) {
+      if (data.length < API_CONFIG.USERS_PER_PAGE) {
         setHasMore(false);
       }
-      
-      // Add new users and cache the result
-      if (data.length > 0) {
-        setCache(cacheKey, data);
-        setUsers(prev => {
-          const existing = new Set(prev.map(u => u.id));
-          const newUsers = data.filter((u: User) => !existing.has(u.id));
-          return [...prev, ...newUsers];
-        });
-      }
-    } catch {
-      setError('Failed to load users');
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
     }
-  }, [loading, hasMore, page]);
-
-  // Fetch users when page changes
-  useEffect(() => {
-    if (page > 1 || users.length === 0) {
-      fetchUsers();
-    }
-  }, [page]);
+  }, [data]);
 
   /**
    * Refreshes the user list from the beginning
-   * Resets pagination and fetches first page
    */
   const refresh = useCallback(async () => {
-    setRefreshing(true);
+    setAllUsers([]);
     setHasMore(true);
-    setError('');
     setPage(1);
-    try {
-      const data = await fetchUsersApi(1);
-      setCache('users_page_1', data);
-      setUsers(data);
-    } catch {
-      setError('Failed to load users');
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+    await refetch();
+  }, [refetch]);
 
   /**
    * Loads the next page of users
-   * Called when user scrolls to bottom
    */
   const loadMore = useCallback(() => {
-    if (hasMore && !loading) {
+    if (hasMore && !isLoading) {
       setPage(p => p + 1);
     }
-  }, [hasMore, loading]);
+  }, [hasMore, isLoading]);
 
-  return { 
-    users, 
-    loading, 
-    initialLoading, 
-    refreshing, 
-    error, 
-    hasMore, 
-    loadMore, 
-    refresh, 
-    fetchUsers 
+  return {
+    users: allUsers,
+    loading: isLoading && page > 1,
+    initialLoading: isLoading && page === 1,
+    refreshing: isRefetching,
+    error: error ? MESSAGES.FAILED_TO_LOAD : '',
+    hasMore,
+    loadMore,
+    refresh,
+    fetchUsers: refetch,
   };
 };

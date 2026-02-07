@@ -8,6 +8,8 @@ export const API_CONFIG = {
   BASE_URL: 'https://jsonplaceholder.typicode.com',
   USERS_PER_PAGE: 5,
   AVATAR_API_URL: 'https://ui-avatars.com/api/',
+  CACHE_TIME: 5 * 60 * 1000, // 5 minutes
+  STALE_TIME: 5 * 60 * 1000, // 5 minutes
 };
 
 // Timing Constants

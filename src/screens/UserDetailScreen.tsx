@@ -2,15 +2,23 @@
  * UserDetailScreen Component
  * Displays detailed information about a selected user
  */
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import { RouteProp } from '@react-navigation/native';
 import { User } from '../types/User';
+import { RootStackParamList } from '../types/navigation';
 import { getAvatarUrl } from '../utils/helpers';
 import { AVATAR_SIZE } from '../utils/constants';
+import { COLORS } from '../utils/colors';
 
-const UserDetailScreen = ({ route }: any) => {
-  // Extract user data from navigation params
-  const { user }: { user: User } = route.params;
+type UserDetailScreenRouteProp = RouteProp<RootStackParamList, 'UserDetail'>;
+
+interface UserDetailScreenProps {
+  route: UserDetailScreenRouteProp;
+}
+
+const UserDetailScreen = ({ route }: UserDetailScreenProps) => {
+  const { user } = route.params;
 
   return (
     <View style={styles.container}>
@@ -35,11 +43,11 @@ const UserDetailScreen = ({ route }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
     padding: 16,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',
@@ -52,7 +60,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.GRAY_DARK,
     marginTop: 16,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -60,10 +68,10 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
-    color: '#000',
+    color: COLORS.BLACK,
     alignSelf: 'flex-start',
     width: '100%',
   },
 });
 
-export default UserDetailScreen;
+export default memo(UserDetailScreen);

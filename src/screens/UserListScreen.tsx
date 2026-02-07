@@ -2,7 +2,7 @@
  * UserListScreen Component
  * Displays a paginated, searchable list of users with infinite scroll
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,26 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Image,
 } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { User } from '../types/User';
+import { RootStackParamList } from '../types/navigation';
 import { useUsers } from '../hooks/useUsers';
 import { useSearch } from '../hooks/useSearch';
-import { getAvatarUrl } from '../utils/helpers';
-import { FLATLIST_CONFIG, MESSAGES, SCREENS, AVATAR_SIZE } from '../utils/constants';
+import UserItem from '../components/UserItem';
+import { FLATLIST_CONFIG, MESSAGES, SCREENS } from '../utils/constants';
+import { COLORS } from '../utils/colors';
 
-const UserListScreen = ({ navigation }: any) => {
+type UserListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'UserList'
+>;
+
+interface UserListScreenProps {
+  navigation: UserListScreenNavigationProp;
+}
+
+const UserListScreen = ({ navigation }: UserListScreenProps) => {
   // Get user data and actions from custom hook
   const {
     users,
@@ -35,26 +46,28 @@ const UserListScreen = ({ navigation }: any) => {
   } = useUsers();
 
   // Search functionality with debouncing
-  const { search, setSearch, debouncedSearch, filteredItems } = useSearch(users, 'name');
+  const { search, setSearch, debouncedSearch, filteredItems } = useSearch(
+    users,
+    'name',
+  );
+
+  // Memoize keyExtractor
+  const keyExtractor = useCallback((item: User) => item.id.toString(), []);
+
+  // Handle user item press
+  const handleUserPress = useCallback(
+    (user: User) => {
+      navigation.navigate('UserDetail', { user });
+    },
+    [navigation],
+  );
 
   // Render individual user item
-  const renderItem = ({ item }: { item: User }) => (
-    <View>
-      <TouchableOpacity
-        style={styles.item}
-        onPress={() => navigation.navigate(SCREENS.USER_DETAIL, { user: item })}
-      >
-        <Image
-          source={{ uri: getAvatarUrl(item.name, AVATAR_SIZE.SMALL) }}
-          style={styles.avatar}
-        />
-        <View style={styles.info}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.email}>{item.email}</Text>
-        </View>
-      </TouchableOpacity>
-      <View style={styles.separator} />
-    </View>
+  const renderItem = useCallback(
+    ({ item }: { item: User }) => (
+      <UserItem user={item} onPress={handleUserPress} />
+    ),
+    [handleUserPress],
   );
 
   // Show loading spinner on initial load
@@ -89,7 +102,7 @@ const UserListScreen = ({ navigation }: any) => {
       {/* User list with infinite scroll and pull-to-refresh */}
       <FlatList
         data={filteredItems}
-        keyExtractor={item => item.id.toString()}
+        keyExtractor={keyExtractor}
         renderItem={renderItem}
         onEndReached={() => {
           if (!debouncedSearch && hasMore && !loading) {
@@ -125,7 +138,7 @@ const UserListScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
   },
   centered: {
     flex: 1,
@@ -136,59 +149,31 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.GRAY_LIGHT,
     borderRadius: 8,
-  },
-  item: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  info: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#eee',
   },
   errorContainer: {
     alignItems: 'center',
     margin: 16,
   },
   error: {
-    color: 'red',
+    color: COLORS.ERROR,
     textAlign: 'center',
     marginBottom: 8,
   },
   retry: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.PRIMARY,
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 6,
   },
   retryText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontWeight: '600',
   },
   empty: {
     textAlign: 'center',
-    color: '#999',
+    color: COLORS.GRAY_MEDIUM,
     marginTop: 40,
     fontSize: 16,
   },
