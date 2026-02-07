@@ -2,7 +2,7 @@
  * useUsers Hook
  * Custom hook for managing user data with pagination, caching, and refresh functionality
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from '../types/User';
 import { fetchUsers as fetchUsersApi } from '../api/userApi';
 import { getCache, setCache } from '../utils/cache';
@@ -14,21 +14,15 @@ export const useUsers = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [hasMore, setHasMore] = useState(true);
-
-  // Fetch users when page changes
-  useEffect(() => {
-    if (page > 1 || users.length === 0) {
-      fetchUsers();
-    }
-  }, [page]);
 
   /**
    * Fetches users from API or cache
    * Implements pagination and duplicate prevention
    */
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
     setError('');
@@ -72,13 +66,21 @@ export const useUsers = () => {
       setLoading(false);
       setInitialLoading(false);
     }
-  };
+  }, [loading, hasMore, page]);
+
+  // Fetch users when page changes
+  useEffect(() => {
+    if (page > 1 || users.length === 0) {
+      fetchUsers();
+    }
+  }, [page]);
 
   /**
    * Refreshes the user list from the beginning
    * Resets pagination and fetches first page
    */
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
     setHasMore(true);
     setError('');
     setPage(1);
@@ -88,18 +90,30 @@ export const useUsers = () => {
       setUsers(data);
     } catch {
       setError('Failed to load users');
+    } finally {
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   /**
    * Loads the next page of users
    * Called when user scrolls to bottom
    */
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (hasMore && !loading) {
       setPage(p => p + 1);
     }
-  };
+  }, [hasMore, loading]);
 
-  return { users, loading, initialLoading, error, hasMore, loadMore, refresh, fetchUsers };
+  return { 
+    users, 
+    loading, 
+    initialLoading, 
+    refreshing, 
+    error, 
+    hasMore, 
+    loadMore, 
+    refresh, 
+    fetchUsers 
+  };
 };

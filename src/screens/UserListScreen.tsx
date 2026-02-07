@@ -2,7 +2,7 @@
  * UserListScreen Component
  * Displays a paginated, searchable list of users with infinite scroll
  */
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -16,15 +16,9 @@ import {
 } from 'react-native';
 import { User } from '../types/User';
 import { useUsers } from '../hooks/useUsers';
-import { useDebounce } from '../hooks/useDebounce';
-import { getAvatarUrl, filterBySearch } from '../utils/helpers';
-import {
-  TIMING,
-  FLATLIST_CONFIG,
-  MESSAGES,
-  SCREENS,
-  AVATAR_SIZE,
-} from '../utils/constants';
+import { useSearch } from '../hooks/useSearch';
+import { getAvatarUrl } from '../utils/helpers';
+import { FLATLIST_CONFIG, MESSAGES, SCREENS, AVATAR_SIZE } from '../utils/constants';
 
 const UserListScreen = ({ navigation }: any) => {
   // Get user data and actions from custom hook
@@ -32,6 +26,7 @@ const UserListScreen = ({ navigation }: any) => {
     users,
     loading,
     initialLoading,
+    refreshing,
     error,
     hasMore,
     loadMore,
@@ -39,21 +34,8 @@ const UserListScreen = ({ navigation }: any) => {
     fetchUsers,
   } = useUsers();
 
-  const [search, setSearch] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Debounce search input to avoid excessive filtering
-  const debouncedSearch = useDebounce(search, TIMING.DEBOUNCE_DELAY);
-
-  // Filter users based on debounced search term
-  const filteredUsers = filterBySearch(users, debouncedSearch, 'name');
-
-  // Handle pull-to-refresh action
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  };
+  // Search functionality with debouncing
+  const { search, setSearch, debouncedSearch, filteredItems } = useSearch(users, 'name');
 
   // Render individual user item
   const renderItem = ({ item }: { item: User }) => (
@@ -98,7 +80,7 @@ const UserListScreen = ({ navigation }: any) => {
       {error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity style={styles.retry} onPress={() => fetchUsers()}>
+          <TouchableOpacity style={styles.retry} onPress={fetchUsers}>
             <Text style={styles.retryText}>{MESSAGES.RETRY}</Text>
           </TouchableOpacity>
         </View>
@@ -106,7 +88,7 @@ const UserListScreen = ({ navigation }: any) => {
 
       {/* User list with infinite scroll and pull-to-refresh */}
       <FlatList
-        data={filteredUsers}
+        data={filteredItems}
         keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         onEndReached={() => {
@@ -116,7 +98,7 @@ const UserListScreen = ({ navigation }: any) => {
         }}
         onEndReachedThreshold={FLATLIST_CONFIG.END_REACHED_THRESHOLD}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
         ListFooterComponent={
           loading && !initialLoading ? (
