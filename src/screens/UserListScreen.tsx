@@ -1,4 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * UserListScreen Component
+ * Displays a paginated, searchable list of users with infinite scroll
+ */
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,8 +16,18 @@ import {
 } from 'react-native';
 import { User } from '../types/User';
 import { useUsers } from '../hooks/useUsers';
+import { useDebounce } from '../hooks/useDebounce';
+import { getAvatarUrl, filterBySearch } from '../utils/helpers';
+import {
+  TIMING,
+  FLATLIST_CONFIG,
+  MESSAGES,
+  SCREENS,
+  AVATAR_SIZE,
+} from '../utils/constants';
 
 const UserListScreen = ({ navigation }: any) => {
+  // Get user data and actions from custom hook
   const {
     users,
     loading,
@@ -24,46 +38,32 @@ const UserListScreen = ({ navigation }: any) => {
     refresh,
     fetchUsers,
   } = useUsers();
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const debounceTimer = useRef<NodeJS.Timeout>();
 
-  useEffect(() => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, [search]);
+  // Debounce search input to avoid excessive filtering
+  const debouncedSearch = useDebounce(search, TIMING.DEBOUNCE_DELAY);
 
-  useEffect(() => {
-    setFilteredUsers(
-      users.filter(u =>
-        u.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-      ),
-    );
-  }, [debouncedSearch, users]);
+  // Filter users based on debounced search term
+  const filteredUsers = filterBySearch(users, debouncedSearch, 'name');
 
+  // Handle pull-to-refresh action
   const onRefresh = async () => {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
   };
 
+  // Render individual user item
   const renderItem = ({ item }: { item: User }) => (
     <View>
       <TouchableOpacity
         style={styles.item}
-        onPress={() => navigation.navigate('UserDetail', { user: item })}
+        onPress={() => navigation.navigate(SCREENS.USER_DETAIL, { user: item })}
       >
         <Image
-          source={{
-            uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              item.name,
-            )}&size=40&background=random`,
-          }}
+          source={{ uri: getAvatarUrl(item.name, AVATAR_SIZE.SMALL) }}
           style={styles.avatar}
         />
         <View style={styles.info}>
@@ -75,6 +75,7 @@ const UserListScreen = ({ navigation }: any) => {
     </View>
   );
 
+  // Show loading spinner on initial load
   if (initialLoading) {
     return (
       <View style={styles.centered}>
@@ -85,20 +86,25 @@ const UserListScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
+      {/* Search input */}
       <TextInput
         style={styles.search}
-        placeholder="Search by name"
+        placeholder={MESSAGES.SEARCH_PLACEHOLDER}
         value={search}
         onChangeText={setSearch}
       />
+
+      {/* Error message with retry button */}
       {error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity style={styles.retry} onPress={() => fetchUsers()}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{MESSAGES.RETRY}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
+
+      {/* User list with infinite scroll and pull-to-refresh */}
       <FlatList
         data={filteredUsers}
         keyExtractor={item => item.id.toString()}
@@ -108,7 +114,7 @@ const UserListScreen = ({ navigation }: any) => {
             loadMore();
           }
         }}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={FLATLIST_CONFIG.END_REACHED_THRESHOLD}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -120,13 +126,15 @@ const UserListScreen = ({ navigation }: any) => {
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.empty}>
-              {debouncedSearch ? 'No users found' : 'No users available'}
+              {debouncedSearch
+                ? MESSAGES.NO_USERS_FOUND
+                : MESSAGES.NO_USERS_AVAILABLE}
             </Text>
           ) : null
         }
         removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
+        maxToRenderPerBatch={FLATLIST_CONFIG.MAX_TO_RENDER_PER_BATCH}
+        windowSize={FLATLIST_CONFIG.WINDOW_SIZE}
       />
     </View>
   );

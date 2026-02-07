@@ -25,11 +25,20 @@ A React Native application that displays a paginated, searchable list of users w
 
 ```
 src/
-├── api/          # API service layer
-├── hooks/        # Custom React hooks
-├── screens/      # Screen components
-├── types/        # TypeScript interfaces
-└── utils/        # Utility functions
+├── api/              # API service layer
+│   └── userApi.ts    # User API endpoints
+├── hooks/            # Custom React hooks
+│   ├── useUsers.ts   # User data management hook
+│   └── useDebounce.ts # Debounce hook
+├── screens/          # Screen components
+│   ├── UserListScreen.tsx
+│   └── UserDetailScreen.tsx
+├── types/            # TypeScript interfaces
+│   └── User.ts       # User type definition
+└── utils/            # Utility functions
+    ├── cache.ts      # In-memory cache
+    ├── constants.ts  # App constants
+    └── helpers.ts    # Helper functions
 ```
 
 ## Setup Instructions
@@ -84,23 +93,44 @@ The app uses [JSONPlaceholder](https://jsonplaceholder.typicode.com/) API:
 
 ## Key Implementation Details
 
-### Custom Hook (useUsers)
-- Manages user state, pagination, and API calls
-- Implements in-memory caching
-- Handles loading and error states
+### Architecture
+- **Clean Code Structure**: Separation of concerns with dedicated folders for API, hooks, screens, types, and utilities
+- **Constants Management**: Centralized configuration in `utils/constants.ts` for easy maintenance
+- **Helper Functions**: Reusable utilities in `utils/helpers.ts` (avatar generation, search filtering)
+- **Custom Hooks**: 
+  - `useUsers`: Manages user state, pagination, and API calls
+  - `useDebounce`: Generic debounce hook for any value
 
-### Debounced Search
-- 300ms delay to optimize performance
+### Features
+
+**Debounced Search**
+- 300ms delay using custom `useDebounce` hook
 - Filters users by name locally
+- Prevents excessive re-renders
 
-### Pagination
+**Pagination**
 - Loads 5 users per page
 - Infinite scroll with `onEndReached`
 - Stops when no more data available
+- Duplicate prevention logic
 
-### Caching
+**Caching**
+- In-memory cache using Map
 - Caches API responses by page number
 - Reduces unnecessary network calls
+- Instant load from cache
+
+**Error Handling**
+- Network error detection
+- User-friendly error messages
+- Retry functionality
+- Loading states (initial and pagination)
+
+**Performance Optimizations**
+- FlatList optimizations (removeClippedSubviews, windowSize, maxToRenderPerBatch)
+- Debounced search input
+- Memoized filtered results
+- Avatar URL generation helper
 
 ## Troubleshooting
 

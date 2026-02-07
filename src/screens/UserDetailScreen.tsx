@@ -1,19 +1,22 @@
+/**
+ * UserDetailScreen Component
+ * Displays detailed information about a selected user
+ */
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { User } from '../types/User';
+import { getAvatarUrl } from '../utils/helpers';
+import { AVATAR_SIZE } from '../utils/constants';
 
 const UserDetailScreen = ({ route }: any) => {
+  // Extract user data from navigation params
   const { user }: { user: User } = route.params;
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
         <Image
-          source={{
-            uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              user.name,
-            )}&size=100&background=random`,
-          }}
+          source={{ uri: getAvatarUrl(user.name, AVATAR_SIZE.LARGE) }}
           style={styles.avatar}
         />
         <Text style={styles.label}>Name</Text>
