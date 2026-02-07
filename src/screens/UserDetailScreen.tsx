@@ -5,7 +5,6 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
-import { User } from '../types/User';
 import { RootStackParamList } from '../types/navigation';
 import { getAvatarUrl } from '../utils/helpers';
 import { AVATAR_SIZE } from '../utils/constants';

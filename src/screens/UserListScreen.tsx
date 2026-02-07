@@ -19,7 +19,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useUsers } from '../hooks/useUsers';
 import { useSearch } from '../hooks/useSearch';
 import UserItem from '../components/UserItem';
-import { FLATLIST_CONFIG, MESSAGES, SCREENS } from '../utils/constants';
+import { FLATLIST_CONFIG, MESSAGES } from '../utils/constants';
 import { COLORS } from '../utils/colors';
 
 type UserListScreenNavigationProp = NativeStackNavigationProp<
@@ -53,6 +53,11 @@ const UserListScreen = ({ navigation }: UserListScreenProps) => {
 
   // Memoize keyExtractor
   const keyExtractor = useCallback((item: User) => item.id.toString(), []);
+
+  // Handle retry button press
+  const handleRetry = useCallback(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Handle user item press
   const handleUserPress = useCallback(
@@ -93,7 +98,7 @@ const UserListScreen = ({ navigation }: UserListScreenProps) => {
       {error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity style={styles.retry} onPress={fetchUsers}>
+          <TouchableOpacity style={styles.retry} onPress={handleRetry}>
             <Text style={styles.retryText}>{MESSAGES.RETRY}</Text>
           </TouchableOpacity>
         </View>
